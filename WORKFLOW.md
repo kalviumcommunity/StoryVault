@@ -88,5 +88,26 @@ All code integrated into `main` must pass through the Pull Request lifecycle.
 * **CI / Check Passing**: All automated checks and linting must pass before merge.
 
 > [!IMPORTANT]
-> **Module 3.11 Assignment Constraint**:  
+> **Module 3.11 Assignment Constraint**:
 > For the Kalvium Module 3.11 assignment, **leave the Pull Request OPEN and UNMERGED** for grading and review. Do not merge the PR into `main`.
+
+---
+
+## 5. Repository Workflow & PR Checklist
+
+Before submitting a Pull Request for review, every developer must verify:
+
+### Local Development Checklist
+- [ ] Working branch was created from the latest `main` (`git checkout -b <prefix>/<description>`).
+- [ ] Virtual environment is active and all dependencies are installed (`pip install -r requirements.txt`).
+- [ ] No secrets, real `.env` files, or local cache directories are staged (`git status`).
+- [ ] Code formatting and conventional commits were applied for every commit.
+- [ ] Automated test suite runs cleanly (`pytest -v`).
+- [ ] Workspace setup verification command passes (`python -m src.config`).
+
+### Pull Request Submission Checklist
+- [ ] PR title follows `<type>: <description>` naming format.
+- [ ] PR description includes context, list of changes, and test verification output.
+- [ ] At least one relevant issue is linked (`Closes #<issue-number>`).
+- [ ] Peer reviewer(s) and assignees are designated.
+- [ ] Feature branch push target is verified against the designated personal repository remote.
