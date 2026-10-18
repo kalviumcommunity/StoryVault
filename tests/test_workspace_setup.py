@@ -28,6 +28,8 @@ def test_required_configuration_files_exist():
     assert (BASE_DIR / ".env.example").is_file(), ".env.example file must exist"
     assert (BASE_DIR / "requirements.txt").is_file(), "requirements.txt must exist"
     assert (BASE_DIR / "README.md").is_file(), "README.md must exist"
+    assert (BASE_DIR / "WORKFLOW.md").is_file(), "WORKFLOW.md must exist"
+
 
 
 def test_env_example_contains_expected_keys():

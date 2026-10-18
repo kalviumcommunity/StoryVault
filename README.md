@@ -21,9 +21,12 @@ Before setting up the project, ensure you have the following installed on your s
 
 ```text
 StoryVault/
+├── .github/
+│   └── pull_request_template.md # GitHub PR template with review checklist
 ├── .env.example          # Template for environment variables (tracked)
 ├── .gitignore             # Git exclusion rules for venv, secrets, outputs, caches
 ├── README.md              # Project documentation and setup guide
+├── WORKFLOW.md            # Team branching, commit, and PR review conventions
 ├── requirements.txt       # Version-constrained dependencies
 ├── data/                  # Local source documents and raw datasets
 │   └── .gitkeep
@@ -160,3 +163,16 @@ pytest -v
 ```
 
 All workspace verification tests should pass.
+
+---
+
+## 6. Team Development & Collaboration Workflow
+
+StoryVault enforces strict GitHub collaboration standards initialized under **Kalvium Module 3.11 — GitHub Repository & Team Workflow Setup**:
+
+- **Branching Model**: All work occurs on short-lived branches (`feature/*`, `fix/*`, `docs/*`) created from `main`. Direct commits to `main` are disallowed.
+- **Commit Standards**: Every commit must follow Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
+- **Issue Traceability**: All changes link to an existing GitHub Issue using `Closes #<issue-number>`.
+- **Review & Merging**: Pull Requests require testing evidence and peer approval prior to merge.
+
+For complete branching policies, commit examples, and PR review checklists, refer to [WORKFLOW.md](WORKFLOW.md).
