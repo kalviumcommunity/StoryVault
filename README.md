@@ -36,9 +36,11 @@ StoryVault/
 │   └── .gitkeep
 ├── src/                   # Core application source code
 │   ├── __init__.py
-│   └── config.py          # Workspace path definitions & environment loader
+│   ├── config.py          # Workspace path definitions & environment loader
+│   └── llm_client.py      # OpenAI-compatible API client & completion caller
 └── tests/                 # Automated unit and integration tests
-    └── test_workspace_setup.py
+    ├── test_workspace_setup.py
+    └── test_llm_client.py
 ```
 
 ### Directory Roles
@@ -154,6 +156,14 @@ Configuration Loaded:
 ========================================
 ```
 
+### LLM Client Completion Call Verification (Module 3.12)
+
+Run the LLM client module to test sending your first chat completion request, inspect request/response payloads, and verify error handling:
+
+```bash
+python -m src.llm_client
+```
+
 ### Running Automated Tests
 
 Run the test suite using `pytest`:
@@ -162,7 +172,7 @@ Run the test suite using `pytest`:
 pytest -v
 ```
 
-All workspace verification tests should pass.
+All workspace verification and LLM client tests should pass (9 tests total).
 
 ---
 
