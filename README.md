@@ -26,22 +26,31 @@ StoryVault/
 ├── README.md              # Project documentation and setup guide
 ├── requirements.txt       # Version-constrained dependencies
 ├── data/                  # Local source documents and raw datasets
-│   └── .gitkeep
+│   ├── .gitkeep
+│   └── sample_story.txt   # Public lore document (representative corpus)
 ├── prompts/               # Reusable prompt templates and chains
 │   └── .gitkeep
 ├── outputs/               # Generated evaluation results, logs, and artifacts
 │   ├── .gitkeep
-│   └── prompt_comparison.md # Module 3.13 Prompt variation evaluation report
+│   ├── prompt_comparison.md # Module 3.13 Prompt variation evaluation report
+│   └── token_cost_report.md # Module 3.14 Tokenization & cost estimation report
+├── scripts/               # Runnable demonstration and analysis scripts
+│   ├── __init__.py
+│   └── token_cost_demo.py # Module 3.14 Token counting and cost demo
 ├── src/                   # Core application source code
 │   ├── __init__.py
 │   ├── config.py          # Workspace path definitions & environment loader
 │   ├── llm_client.py      # OpenAI-compatible API client & completion caller
 │   ├── prompts.py         # System prompt governance & role-separated builders
-│   └── prompt_comparison.py # Comparative benchmarking runner
+│   ├── prompt_comparison.py # Comparative benchmarking runner
+│   ├── token_counter.py   # Subword token counting & analysis via tiktoken
+│   └── cost_estimator.py  # Separate input/output token cost calculations
 └── tests/                 # Automated unit and integration tests
     ├── test_workspace_setup.py
     ├── test_llm_client.py
-    └── test_prompts.py
+    ├── test_prompts.py
+    ├── test_token_counter.py
+    └── test_cost_estimator.py
 ```
 
 ### Directory Roles
@@ -175,6 +184,16 @@ python -m src.prompt_comparison
 
 Results and prompt engineering rationales are logged to `outputs/prompt_comparison.md`.
 
+### Tokenization & Cost Estimation Demonstration (Module 3.14)
+
+Run the token counting and API cost estimation demonstration:
+
+```bash
+python scripts/token_cost_demo.py
+```
+
+Outputs token statistics, subword non-proportionality analysis, and input/output cost estimates to `outputs/token_cost_report.md`.
+
 ### Running Automated Tests
 
 Run the full test suite using `pytest`:
@@ -183,7 +202,7 @@ Run the full test suite using `pytest`:
 pytest -v
 ```
 
-All workspace verification, LLM client, and prompt construction tests should pass (18 tests total).
+All workspace verification, LLM client, prompt construction, token counting, and cost estimation tests should pass (34 tests total).
 
 ---
 

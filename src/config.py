@@ -34,6 +34,9 @@ def load_environment() -> dict:
         "VECTOR_DB_DIR": os.getenv("VECTOR_DB_DIR", str(DATA_DIR / "chromadb")),
         "CHUNK_SIZE": int(os.getenv("CHUNK_SIZE", "1000")),
         "CHUNK_OVERLAP": int(os.getenv("CHUNK_OVERLAP", "200")),
+        "TOKEN_ENCODING_NAME": os.getenv("TOKEN_ENCODING_NAME", "cl100k_base"),
+        "INPUT_PRICE_PER_1K": float(os.getenv("INPUT_PRICE_PER_1K", "0.00015")),
+        "OUTPUT_PRICE_PER_1K": float(os.getenv("OUTPUT_PRICE_PER_1K", "0.00060")),
     }
 
 
