@@ -30,14 +30,18 @@ StoryVault/
 ├── prompts/               # Reusable prompt templates and chains
 │   └── .gitkeep
 ├── outputs/               # Generated evaluation results, logs, and artifacts
-│   └── .gitkeep
+│   ├── .gitkeep
+│   └── prompt_comparison.md # Module 3.13 Prompt variation evaluation report
 ├── src/                   # Core application source code
 │   ├── __init__.py
 │   ├── config.py          # Workspace path definitions & environment loader
-│   └── llm_client.py      # OpenAI-compatible API client & completion caller
+│   ├── llm_client.py      # OpenAI-compatible API client & completion caller
+│   ├── prompts.py         # System prompt governance & role-separated builders
+│   └── prompt_comparison.py # Comparative benchmarking runner
 └── tests/                 # Automated unit and integration tests
     ├── test_workspace_setup.py
-    └── test_llm_client.py
+    ├── test_llm_client.py
+    └── test_prompts.py
 ```
 
 ### Directory Roles
@@ -161,16 +165,25 @@ Run the LLM client module to test sending your first chat completion request, in
 python -m src.llm_client
 ```
 
+### Prompt Construction & Role Comparison Verification (Module 3.13)
+
+Run the prompt comparison runner to evaluate Prompt A (Ambiguous) vs Prompt B (Specific and constrained):
+
+```bash
+python -m src.prompt_comparison
+```
+
+Results and prompt engineering rationales are logged to `outputs/prompt_comparison.md`.
+
 ### Running Automated Tests
 
-Run the test suite using `pytest`:
+Run the full test suite using `pytest`:
 
 ```bash
 pytest -v
 ```
 
-feature/llm-api-access
-All workspace verification and LLM client tests should pass (9 tests total).
+All workspace verification, LLM client, and prompt construction tests should pass (18 tests total).
 
 ---
 
@@ -184,6 +197,3 @@ StoryVault enforces strict GitHub collaboration standards initialized under **Ka
 - **Review & Merging**: Pull Requests require testing evidence and peer approval prior to merge.
 
 For complete branching policies, commit examples, and PR review checklists, refer to [WORKFLOW.md](WORKFLOW.md).
-=======
-All workspace verification tests should pass.
-main

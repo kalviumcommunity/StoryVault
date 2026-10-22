@@ -71,6 +71,7 @@ htmlcov/
 # Ignore generated outputs and local documents while preserving structure
 outputs/*
 !outputs/.gitkeep
+!outputs/prompt_comparison.md
 
 data/*
 !data/.gitkeep
