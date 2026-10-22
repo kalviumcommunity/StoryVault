@@ -60,6 +60,7 @@ Thumbs.db
 desktop.ini
 
 # Testing & Coverage
+.cache/
 .pytest_cache/
 .coverage
 .coverage.*
@@ -72,9 +73,11 @@ htmlcov/
 outputs/*
 !outputs/.gitkeep
 !outputs/prompt_comparison.md
+!outputs/token_cost_report.md
 
 data/*
 !data/.gitkeep
+!data/sample_story.txt
 
 # Logs
 *.log
