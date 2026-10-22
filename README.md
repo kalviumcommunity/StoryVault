@@ -33,9 +33,11 @@ StoryVault/
 │   └── .gitkeep
 ├── src/                   # Core application source code
 │   ├── __init__.py
-│   └── config.py          # Workspace path definitions & environment loader
+│   ├── config.py          # Workspace path definitions & environment loader
+│   └── llm_client.py      # OpenAI-compatible API client & completion caller
 └── tests/                 # Automated unit and integration tests
-    └── test_workspace_setup.py
+    ├── test_workspace_setup.py
+    └── test_llm_client.py
 ```
 
 ### Directory Roles
@@ -151,6 +153,14 @@ Configuration Loaded:
 ========================================
 ```
 
+### LLM Client Completion Call Verification (Module 3.12)
+
+Run the LLM client module to test sending your first chat completion request, inspect request/response payloads, and verify error handling:
+
+```bash
+python -m src.llm_client
+```
+
 ### Running Automated Tests
 
 Run the test suite using `pytest`:
@@ -159,4 +169,21 @@ Run the test suite using `pytest`:
 pytest -v
 ```
 
+feature/llm-api-access
+All workspace verification and LLM client tests should pass (9 tests total).
+
+---
+
+## 6. Team Development & Collaboration Workflow
+
+StoryVault enforces strict GitHub collaboration standards initialized under **Kalvium Module 3.11 — GitHub Repository & Team Workflow Setup**:
+
+- **Branching Model**: All work occurs on short-lived branches (`feature/*`, `fix/*`, `docs/*`) created from `main`. Direct commits to `main` are disallowed.
+- **Commit Standards**: Every commit must follow Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
+- **Issue Traceability**: All changes link to an existing GitHub Issue using `Closes #<issue-number>`.
+- **Review & Merging**: Pull Requests require testing evidence and peer approval prior to merge.
+
+For complete branching policies, commit examples, and PR review checklists, refer to [WORKFLOW.md](WORKFLOW.md).
+=======
 All workspace verification tests should pass.
+main

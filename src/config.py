@@ -24,9 +24,11 @@ def load_environment() -> dict:
     return {
         "ENVIRONMENT": os.getenv("ENVIRONMENT", "development"),
         "LOG_LEVEL": os.getenv("LOG_LEVEL", "INFO"),
+        "OPENAI_BASE_URL": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
         "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY", ""),
         "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY", ""),
+        "CHAT_MODEL": os.getenv("CHAT_MODEL", "gpt-4o-mini"),
         "LLM_MODEL_NAME": os.getenv("LLM_MODEL_NAME", "gpt-4o-mini"),
         "EMBEDDING_MODEL_NAME": os.getenv("EMBEDDING_MODEL_NAME", "text-embedding-3-small"),
         "VECTOR_DB_DIR": os.getenv("VECTOR_DB_DIR", str(DATA_DIR / "chromadb")),

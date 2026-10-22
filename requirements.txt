@@ -7,3 +7,7 @@ pydantic>=2.7.0,<3.0.0
 
 # Testing & quality assurance
 pytest>=8.0.0,<9.0.0
+
+# LLM API & Providers (Module 3.12: LLM API Access & First Completion Call)
+openai>=1.30.0,<2.0.0
+
