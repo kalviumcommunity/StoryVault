@@ -11,3 +11,6 @@ pytest>=8.0.0,<9.0.0
 # LLM API & Providers (Module 3.12: LLM API Access & First Completion Call)
 openai>=1.30.0,<2.0.0
 
+# Tokenization & Cost Estimation (Module 3.14: Tokens, Tokenization & Cost Estimation)
+tiktoken>=0.7.0,<1.0.0
+
