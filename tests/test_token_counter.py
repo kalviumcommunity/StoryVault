@@ -113,7 +113,7 @@ def test_get_tokenizer_invalid_encoding():
 
 def test_offline_token_counting_without_api_keys():
     """Verify token counting works offline with zero API credentials."""
-    with patch.dict(os.environ, {"OPENAI_API_KEY": "", "ANTHROPIC_API_KEY": "", "GEMINI_API_KEY": ""}, clear=False):
+    with patch.dict(os.environ, {"GEMINI_API_KEY": ""}, clear=False):
         # Must execute without network calls or credential checks
         count = count_tokens("StoryVault offline token verification.")
         assert count > 0

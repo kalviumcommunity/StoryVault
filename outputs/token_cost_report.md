@@ -2,7 +2,7 @@
 
 **Module:** Kalvium Module 3.14 — Tokens, Tokenization & Cost Estimation  
 **Tokenizer Encoding:** `cl100k_base` (via `tiktoken`)  
-**Illustrative Model:** `gpt-4o-mini`  
+**Illustrative Model:** `gemini-3.8-flash`
 **Configured Rates (Illustrative):** `$0.00015 / 1k input tokens`, `$0.00060 / 1k output tokens`  
 
 ---
@@ -54,7 +54,7 @@ Costs are calculated separately for input (prompt/context) tokens and output (ge
 
 $$\text{Estimated Cost} = \left(\frac{\text{Input Tokens}}{1000} \times \text{Input Price per 1k}\right) + \left(\frac{\text{Output Tokens}}{1000} \times \text{Output Price per 1k}\right)$$
 
-### Cost Projections Table (gpt-4o-mini)
+### Cost Projections Table (gemini-3.8-flash)
 
 | Scenario / Context | Input Tokens | Output Tokens | Total Tokens | Input Cost (USD) | Output Cost (USD) | Total Estimated Cost (USD) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |

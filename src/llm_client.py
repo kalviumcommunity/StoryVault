@@ -1,100 +1,111 @@
-"""LLM Client configuration and first completion call module.
+"""Authenticated Python client for StoryVault's centralized backend AI service."""
 
-StoryVault - Module 3.12: LLM API Access & First Completion Call.
-Provides OpenAI-compatible client initialization, completion generation,
-structured payload logging, and graceful error handling.
-"""
-
-import os
+import json
 import logging
-from typing import Optional, Dict, Any, List, Tuple
-from dotenv import load_dotenv
-from openai import OpenAI, AuthenticationError, RateLimitError, APIError
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
-# Configure module-level logger
+from src.config import load_environment
+
 logger = logging.getLogger(__name__)
 
+BACKEND_REQUEST_TIMEOUT_SECONDS = 125
 
-def get_llm_client(
-    base_url: Optional[str] = None,
-    api_key: Optional[str] = None,
-) -> OpenAI:
-    """Initialize and return an OpenAI-compatible client.
 
-    Args:
-        base_url: Custom base URL (e.g., for Ollama, LM Studio, Groq, OpenRouter).
-                  Defaults to OPENAI_BASE_URL from env if set.
-        api_key: API key. Defaults to OPENAI_API_KEY from env if set.
+class BackendRequestError(Exception):
+    """A sanitized failure from StoryVault's authenticated backend endpoint."""
 
-    Returns:
-        OpenAI: Configured client instance.
-    """
-    load_dotenv()
+    def __init__(self, status_code: Optional[int] = None) -> None:
+        super().__init__("StoryVault backend request failed.")
+        self.status_code = status_code
 
-    resolved_base_url = base_url if base_url is not None else os.getenv("OPENAI_BASE_URL")
-    resolved_api_key = api_key if api_key is not None else os.getenv("OPENAI_API_KEY", "")
 
-    client_kwargs: Dict[str, Any] = {
-        "api_key": resolved_api_key or "placeholder_key",
-    }
-    if resolved_base_url and resolved_base_url.strip():
-        client_kwargs["base_url"] = resolved_base_url.strip()
+class BackendResponseError(Exception):
+    """The backend response did not match the completion response contract."""
 
-    return OpenAI(**client_kwargs)
+
+class StoryVaultBackendClient:
+    def __init__(self, api_url: str, api_token: str) -> None:
+        self.api_url = api_url.rstrip('/')
+        self.api_token = api_token
+
+    def generate_completion(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        request = Request(
+            f"{self.api_url}/api/ai/completion",
+            data=json.dumps({"messages": messages}).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.api_token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=BACKEND_REQUEST_TIMEOUT_SECONDS) as response:
+                body = response.read().decode("utf-8")
+        except HTTPError as error:
+            raise BackendRequestError(error.code) from None
+        except (URLError, TimeoutError):
+            raise BackendRequestError() from None
+
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            raise BackendResponseError("StoryVault returned invalid JSON.") from None
+        if not isinstance(payload, dict) or not isinstance(payload.get("text"), str):
+            raise BackendResponseError("StoryVault returned an invalid completion payload.")
+        usage = payload.get("usage")
+        if usage is not None and (
+            not isinstance(usage, dict)
+            or any(type(usage.get(key)) is not int for key in ("promptTokens", "completionTokens", "totalTokens"))
+        ):
+            raise BackendResponseError("StoryVault returned invalid usage metadata.")
+        return payload
+
+
+def get_backend_client(
+    api_url: Optional[str] = None,
+    api_token: Optional[str] = None,
+) -> StoryVaultBackendClient:
+    """Create a client using the backend URL and an authenticated StoryVault JWT."""
+    environment = load_environment()
+    resolved_url = api_url or environment["STORYVAULT_API_URL"]
+    resolved_token = api_token if api_token is not None else environment["STORYVAULT_API_TOKEN"]
+    if not resolved_token:
+        raise ValueError("STORYVAULT_API_TOKEN is required to call the authenticated AI endpoint.")
+    return StoryVaultBackendClient(resolved_url, resolved_token)
 
 
 def generate_chat_completion(
     messages: List[Dict[str, str]],
-    model: Optional[str] = None,
-    client: Optional[OpenAI] = None,
-) -> Tuple[Optional[str], Optional[Any]]:
-    """Send a chat completion request, log payload and usage, and handle errors.
-
-    Args:
-        messages: List of message dictionaries with 'role' and 'content'.
-        model: Model name. Defaults to CHAT_MODEL or LLM_MODEL_NAME from env.
-        client: Optional pre-configured OpenAI client instance.
-
-    Returns:
-        Tuple[Optional[str], Optional[Any]]: (response_text, usage_metadata)
-    """
-    load_dotenv()
-
-    if client is None:
-        client = get_llm_client()
-
-    resolved_model = model or os.getenv("CHAT_MODEL") or os.getenv("LLM_MODEL_NAME", "gpt-4o-mini")
-
-    logger.info("REQUEST: %s", messages)
-
+    client: Optional[Any] = None,
+) -> Tuple[Optional[str], Optional[Dict[str, int]]]:
+    """Request a Gemini completion through StoryVault's authenticated backend."""
     try:
-        resp = client.chat.completions.create(
-            model=resolved_model,
-            messages=messages,  # type: ignore[arg-type]
-        )
-        content = resp.choices[0].message.content
-        logger.info("RESPONSE: %s", content)
-        logger.info("USAGE: %s", resp.usage)
-        return content, resp.usage
-
-    except AuthenticationError as e:
-        logger.error("Auth failed (401): check OPENAI_API_KEY in your .env (%s)", e)
-        print("Auth failed (401): check OPENAI_API_KEY in your .env")
+        backend_client = client if client is not None else get_backend_client()
+        response = backend_client.generate_completion(messages)
+        text = response.get("text")
+        if not isinstance(text, str):
+            raise BackendResponseError()
+        text = text.strip()
+        if not text:
+            logger.error("StoryVault backend returned an empty completion.")
+            return None, None
+        usage = response.get("usage")
+        if usage is not None and (
+            not isinstance(usage, dict)
+            or any(type(usage.get(key)) is not int for key in ("promptTokens", "completionTokens", "totalTokens"))
+        ):
+            raise BackendResponseError()
+        return text, usage
+    except ValueError as error:
+        logger.error("StoryVault backend configuration error: %s", error)
         return None, None
-
-    except RateLimitError as e:
-        logger.error("Rate limited (429): slow down and retry with backoff (%s)", e)
-        print("Rate limited (429): slow down and retry with backoff")
+    except BackendRequestError as error:
+        logger.error("StoryVault backend request failed (HTTP %s).", error.status_code or "unavailable")
         return None, None
-
-    except APIError as e:
-        logger.error("API error (%s): %s", getattr(e, "status_code", "unknown"), e)
-        print(f"API error: {e}")
-        return None, None
-
-    except Exception as e:
-        logger.error("Unexpected error (%s): %s", type(e).__name__, e)
-        print(f"Unexpected error: {e}")
+    except BackendResponseError:
+        logger.error("StoryVault backend returned an invalid completion response.")
         return None, None
 
 
@@ -106,7 +117,7 @@ if __name__ == "__main__":
         {"role": "user", "content": "Say hello in one sentence."},
     ]
 
-    print("=== StoryVault LLM Completion Call (Module 3.12) ===")
+    print("=== StoryVault Gemini Completion Call ===")
     response_text, usage = generate_chat_completion(sample_messages)
 
     if response_text:
@@ -115,5 +126,7 @@ if __name__ == "__main__":
         if usage:
             print(f"\n[Usage]: {usage}")
     else:
-        print("\n[Notice]: Completion was not returned due to missing/invalid API credentials or network configuration.")
-        print("Ensure OPENAI_API_KEY is configured in your .env file.")
+        print(
+            "\n[Notice]: No response was returned. Verify the backend is running and "
+            "STORYVAULT_API_TOKEN contains a valid StoryVault JWT."
+        )

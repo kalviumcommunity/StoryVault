@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  JOURNALIST
+  EDITOR
+  ARCHIVIST
+  ADMIN
+}
+
+enum DocumentType {
+  ARTICLE
+  INTERVIEW_TRANSCRIPT
+  FOOTAGE_NOTE
+  LEAK_MEMO
+  HISTORICAL_REPORT
+}
+
+enum AccessLevel {
+  PUBLIC
+  INTERNAL
+  RESTRICTED
+  CLASSIFIED
+}
+
+enum DocumentStatus {
+  DRAFT
+  INDEXED
+  ARCHIVED
+}
+
+enum EntityType {
+  PERSON
+  ORGANIZATION
+  LOCATION
+  EVENT
+  TECHNOLOGY
+  CONCEPT
+}
+
+enum IngestionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum BriefStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         Role          @default(JOURNALIST)
+  avatarUrl    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  collections   Collection[]
+  savedSearches SavedSearch[]
+  briefs        ResearchBrief[]
+  auditLogs     AuditLog[]
+  ingestionJobs IngestionJob[]
+
+  @@map("users")
+}
+
+model Author {
+  id           String     @id @default(cuid())
+  name         String     @unique
+  title        String?
+  organization String?
+  bio          String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  documents    Document[]
+
+  @@map("authors")
+}
+
+model Publication {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  type        String?
+  country     String?
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  documents   Document[]
+
+  @@map("publications")
+}
+
+model Topic {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+
+  documents   Document[]
+
+  @@map("topics")
+}
+
+model Entity {
+  id            String           @id @default(cuid())
+  name          String
+  entityType    EntityType
+  description   String?
+  mentionsCount Int              @default(0)
+  createdAt     DateTime         @default(now())
+
+  documentEntities DocumentEntity[]
+
+  @@unique([name, entityType])
+  @@index([entityType])
+  @@map("entities")
+}
+
+model Document {
+  id                String         @id @default(cuid())
+  title             String
+  slug              String         @unique
+  content           String         @db.Text
+  extractedText     String?        @db.Text
+  summary           String?        @db.Text
+  documentType      DocumentType   @default(ARTICLE)
+  accessLevel       AccessLevel    @default(PUBLIC)
+  status            DocumentStatus @default(INDEXED)
+  publicationDate   DateTime
+  originalSourceUrl String?
+  originalFilename  String?
+  contentHash       String         @unique
+  provenance        String?        @db.Text
+  wordCount         Int            @default(0)
+
+  authorId          String?
+  author            Author?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  publicationId     String?
+  publication       Publication?   @relation(fields: [publicationId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  chunks            DocumentChunk[]
+  topics            Topic[]
+  entities          DocumentEntity[]
+  collectionItems   CollectionDocument[]
+  citations         ResearchBriefCitation[]
+
+  @@index([publicationDate])
+  @@index([documentType])
+  @@index([accessLevel])
+  @@index([status])
+  @@index([authorId])
+  @@index([publicationId])
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id            String    @id @default(cuid())
+  documentId    String
+  document      Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkIndex    Int
+  content       String    @db.Text
+  startChar     Int
+  endChar       Int
+  tokenCount    Int       @default(0)
+  embedding     Json?     // Stored float vector for semantic search & cosine similarity
+  createdAt     DateTime  @default(now())
+
+  citations     ResearchBriefCitation[]
+
+  @@index([documentId])
+  @@unique([documentId, chunkIndex])
+  @@map("document_chunks")
+}
+
+model DocumentEntity {
+  id             String    @id @default(cuid())
+  documentId     String
+  document       Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  entityId       String
+  entity         Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  relevanceScore Float     @default(1.0)
+  contextSnippet String?   @db.Text
+  createdAt      DateTime  @default(now())
+
+  @@unique([documentId, entityId])
+  @@index([documentId])
+  @@index([entityId])
+  @@map("document_entities")
+}
+
+model Collection {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  isPublic    Boolean   @default(false)
+  ownerId     String
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  items       CollectionDocument[]
+
+  @@index([ownerId])
+  @@map("collections")
+}
+
+model CollectionDocument {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  documentId   String
+  document     Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  notes        String?
+  addedAt      DateTime   @default(now())
+
+  @@unique([collectionId, documentId])
+  @@index([collectionId])
+  @@index([documentId])
+  @@map("collection_documents")
+}
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  name      String
+  query     String
+  filters   Json?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("saved_searches")
+}
+
+model ResearchBrief {
+  id                  String       @id @default(cuid())
+  title               String
+  topic               String?
+  executiveSummary    String       @db.Text
+  historicalTimeline  Json?        // Array of { date, event, sourceId, sourceTitle }
+  keyEntities         Json?        // Array of { name, role, mentionCount }
+  previousEvents      Json?        // Array of { event, context, significance }
+  supportingEvidence  Json?        // Array of { claim, citationIndices, confidence }
+  conflictingAccounts Json?        // Array of { topic, accountA, accountB, sourceDetails }
+  knowledgeGaps       Json?        // Array of { question, reasonForUncertainty }
+  sourceList          Json?        // Array of { documentId, title, author, date, url }
+  status              BriefStatus  @default(DRAFT)
+  createdById         String
+  createdBy           User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  citations           ResearchBriefCitation[]
+
+  @@index([createdById])
+  @@index([status])
+  @@map("research_briefs")
+}
+
+model ResearchBriefCitation {
+  id              String         @id @default(cuid())
+  briefId         String
+  brief           ResearchBrief  @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  documentId      String
+  document        Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkId         String?
+  chunk           DocumentChunk? @relation(fields: [chunkId], references: [id], onDelete: SetNull)
+  citationIndex   Int
+  statementText   String         @db.Text
+  excerptText     String         @db.Text
+  confidenceScore Float          @default(0.95)
+  createdAt       DateTime       @default(now())
+
+  @@index([briefId])
+  @@index([documentId])
+  @@map("research_brief_citations")
+}
+
+model IngestionJob {
+  id           String          @id @default(cuid())
+  filename     String
+  fileSize     Int
+  fileType     String
+  contentHash  String
+  status       IngestionStatus @default(PENDING)
+  totalChunks  Int             @default(0)
+  errorMessage String?         @db.Text
+  retryCount   Int             @default(0)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdById  String?
+  createdBy    User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+
+  @@index([status])
+  @@index([contentHash])
+  @@map("ingestion_jobs")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

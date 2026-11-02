@@ -82,3 +82,12 @@ data/*
 # Logs
 *.log
 logs/
+
+# Node.js & Full-Stack Web Application
+node_modules/
+*/node_modules/
+dist/
+*/dist/
+.vite/
+*/uploads/
+backend/uploads/

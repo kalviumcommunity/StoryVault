@@ -1,8 +1,8 @@
 # StoryVault Prompt Comparison & Evaluation
 
 **Module:** Kalvium Module 3.13 — Prompt Construction and System/User Message Roles  
-**Execution Status:** ⚠️ Live API Unverified (No API Key Configured)  
-**Note:** Live API execution unverified: API credentials or network endpoint not configured in environment. Model outputs were NOT fabricated.
+**Execution Status:** ⚠️ Backend Call Unverified (Check Server and JWT)
+**Note:** Backend completion unverified: the backend, authenticated JWT, or network connection is unavailable. Model outputs were NOT fabricated.
 
 ---
 
@@ -35,7 +35,7 @@ Explain our refund policy.
 
 #### Actual Model Output
 ```text
-[Live model call unverified - no API key configured]
+[Backend completion unverified]
 ```
 
 ---
@@ -68,12 +68,12 @@ Using only the provided context, answer the question in one sentence. State the 
 
 #### Actual Model Output
 ```text
-[Live model call unverified - no API key configured]
+[Backend completion unverified]
 ```
 
 #### Out-of-Context Fallback Test Output
 ```text
-[Live model call unverified - no API key configured]
+[Backend completion unverified]
 ```
 
 ---

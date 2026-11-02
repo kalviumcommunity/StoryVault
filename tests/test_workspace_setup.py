@@ -1,6 +1,7 @@
 """Tests for StoryVault workspace setup and environment configuration."""
 
 from pathlib import Path
+from unittest.mock import patch
 import pytest
 from src.config import (
     BASE_DIR,
@@ -36,11 +37,11 @@ def test_env_example_contains_expected_keys():
     expected_placeholders = [
         "ENVIRONMENT",
         "LOG_LEVEL",
-        "OPENAI_API_KEY",
-        "ANTHROPIC_API_KEY",
         "GEMINI_API_KEY",
-        "LLM_MODEL_NAME",
-        "EMBEDDING_MODEL_NAME",
+        "GEMINI_MODEL",
+        "GEMINI_EMBEDDING_MODEL",
+        "STORYVAULT_API_URL",
+        "STORYVAULT_API_TOKEN",
         "VECTOR_DB_DIR",
         "CHUNK_SIZE",
         "CHUNK_OVERLAP",
@@ -51,11 +52,13 @@ def test_env_example_contains_expected_keys():
 
 def test_environment_loader_defaults():
     """Verify config.load_environment loads sensible defaults."""
-    env = load_environment()
+    with patch.dict("os.environ", {}, clear=True), patch("src.config.dotenv_values", return_value={}):
+        env = load_environment()
     assert env["ENVIRONMENT"] == "development"
     assert env["LOG_LEVEL"] == "INFO"
-    assert env["LLM_MODEL_NAME"] == "gpt-4o-mini"
-    assert env["EMBEDDING_MODEL_NAME"] == "text-embedding-3-small"
+    assert env["GEMINI_MODEL"] == "gemini-3.8-flash"
+    assert env["GEMINI_EMBEDDING_MODEL"] == "gemini-embedding-2"
+    assert "GEMINI_API_KEY" not in env
     assert "chromadb" in env["VECTOR_DB_DIR"]
     assert env["CHUNK_SIZE"] == 1000
     assert env["CHUNK_OVERLAP"] == 200

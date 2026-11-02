@@ -9,7 +9,7 @@ status when API credentials are not supplied.
 import os
 import logging
 from typing import Dict, Any, Optional
-from src.llm_client import generate_chat_completion, get_llm_client
+from src.llm_client import generate_chat_completion
 from src.prompts import (
     CONTROLLED_CONTEXT,
     CONTROLLED_QUESTION,
@@ -25,7 +25,6 @@ def run_prompt_comparison(
     context: str = CONTROLLED_CONTEXT,
     question: str = CONTROLLED_QUESTION,
     client: Optional[Any] = None,
-    model: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Execute Prompt A and Prompt B comparisons against the configured LLM.
 
@@ -33,7 +32,6 @@ def run_prompt_comparison(
         context: Reference context text.
         question: Question to answer.
         client: Optional pre-configured client (or mock for unit testing).
-        model: Optional model override.
 
     Returns:
         Dict[str, Any]: Comparison results containing messages, responses,
@@ -50,21 +48,21 @@ def run_prompt_comparison(
     )
 
     logger.info("Executing Prompt A (Ambiguous)...")
-    resp_a, usage_a = generate_chat_completion(prompt_a_msgs, model=model, client=client)
+    resp_a, usage_a = generate_chat_completion(prompt_a_msgs, client=client)
 
     logger.info("Executing Prompt B (Constrained)...")
-    resp_b, usage_b = generate_chat_completion(prompt_b_msgs, model=model, client=client)
+    resp_b, usage_b = generate_chat_completion(prompt_b_msgs, client=client)
 
     logger.info("Executing Prompt B Fallback Test...")
-    resp_fb, usage_fb = generate_chat_completion(out_of_bounds_msgs, model=model, client=client)
+    resp_fb, usage_fb = generate_chat_completion(out_of_bounds_msgs, client=client)
 
     live_executed = (resp_a is not None) and (resp_b is not None)
 
     if live_executed:
-        execution_note = "Live API completion succeeded against configured model."
+        execution_note = "Authenticated StoryVault backend completion succeeded using Gemini."
     else:
         execution_note = (
-            "Live API execution unverified: API credentials or network endpoint not configured in environment. "
+            "Backend completion unverified: the backend, authenticated JWT, or network connection is unavailable. "
             "Model outputs were NOT fabricated."
         )
 
@@ -101,12 +99,14 @@ def format_comparison_markdown(results: Dict[str, Any]) -> str:
         str: Markdown content for outputs/prompt_comparison.md.
     """
     live_status_str = (
-        "✅ Verified Live API Call" if results["live_executed"] else "⚠️ Live API Unverified (No API Key Configured)"
+        "✅ Verified Backend Call"
+        if results["live_executed"]
+        else "⚠️ Backend Call Unverified (Check Server and JWT)"
     )
 
-    prompt_a_output = results["prompt_a"]["response"] or "[Live model call unverified - no API key configured]"
-    prompt_b_output = results["prompt_b"]["response"] or "[Live model call unverified - no API key configured]"
-    fallback_output = results["fallback_test"]["response"] or "[Live model call unverified - no API key configured]"
+    prompt_a_output = results["prompt_a"]["response"] or "[Backend completion unverified]"
+    prompt_b_output = results["prompt_b"]["response"] or "[Backend completion unverified]"
+    fallback_output = results["fallback_test"]["response"] or "[Backend completion unverified]"
 
     doc = f"""# StoryVault Prompt Comparison & Evaluation
 

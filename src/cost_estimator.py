@@ -72,7 +72,7 @@ def estimate_api_cost(
     env = load_environment()
 
     # Resolve model name
-    resolved_model = model_name or env.get("CHAT_MODEL", "gpt-4o-mini")
+    resolved_model = model_name or env["GEMINI_MODEL"]
 
     # Resolve pricing rates
     if input_price_per_1k is None:

@@ -92,7 +92,7 @@ def run_cost_simulations(token_results: List[Dict[str, Any]]) -> List[CostEstima
     env = load_environment()
     input_rate = float(env.get("INPUT_PRICE_PER_1K", 0.00015))
     output_rate = float(env.get("OUTPUT_PRICE_PER_1K", 0.00060))
-    model = env.get("CHAT_MODEL", "gpt-4o-mini")
+    model = env["GEMINI_MODEL"]
 
     # Define typical output token lengths for each scenario
     simulations = [
@@ -122,7 +122,7 @@ def generate_markdown_report(
 ) -> str:
     """Generate comprehensive Markdown documentation for outputs/token_cost_report.md."""
     env = load_environment()
-    model = env.get("CHAT_MODEL", "gpt-4o-mini")
+    model = env["GEMINI_MODEL"]
     encoding = env.get("TOKEN_ENCODING_NAME", "cl100k_base")
     in_price = float(env.get("INPUT_PRICE_PER_1K", 0.00015))
     out_price = float(env.get("OUTPUT_PRICE_PER_1K", 0.00060))

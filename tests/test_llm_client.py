@@ -1,93 +1,109 @@
-"""Unit tests for src/llm_client.py (Module 3.12: LLM API Access & First Completion Call)."""
+"""Unit tests for Python requests to StoryVault's centralized AI service."""
 
 from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
+
 import pytest
-from openai import AuthenticationError, RateLimitError
-import httpx
 
-from src.llm_client import get_llm_client, generate_chat_completion
-
-
-def test_get_llm_client_default():
-    """Verify get_llm_client initializes with environment variables."""
-    with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key-123", "OPENAI_BASE_URL": "https://api.openai.com/v1"}):
-        client = get_llm_client()
-        assert client.api_key == "test-key-123"
-        assert "api.openai.com" in str(client.base_url)
+from src.llm_client import (
+    BACKEND_REQUEST_TIMEOUT_SECONDS,
+    BackendRequestError,
+    generate_chat_completion,
+    get_backend_client,
+)
 
 
-def test_get_llm_client_custom_provider():
-    """Verify get_llm_client respects custom base_url (e.g. Ollama or local LLM)."""
-    client = get_llm_client(base_url="http://localhost:11434/v1", api_key="ollama")
-    assert "localhost:11434" in str(client.base_url)
-    assert client.api_key == "ollama"
+def test_get_backend_client_uses_storyvault_url_and_jwt():
+    """The Python client sends authenticated requests to StoryVault, not a provider."""
+    with patch(
+        "src.llm_client.load_environment",
+        return_value={
+            "STORYVAULT_API_URL": "https://storyvault.example",
+            "STORYVAULT_API_TOKEN": "test-jwt-token",
+        },
+    ):
+        client = get_backend_client()
+
+    assert client.api_url == "https://storyvault.example"
+    assert client.api_token == "test-jwt-token"
+
+
+def test_get_backend_client_requires_authentication(monkeypatch):
+    """No provider API key or unauthenticated generic-completion request is used."""
+    monkeypatch.setattr(
+        "src.llm_client.load_environment",
+        lambda: {"STORYVAULT_API_URL": "http://localhost:5000", "STORYVAULT_API_TOKEN": ""},
+    )
+
+    with pytest.raises(ValueError, match="STORYVAULT_API_TOKEN"):
+        get_backend_client()
 
 
 def test_generate_chat_completion_success():
-    """Verify generate_chat_completion correctly parses content and usage."""
+    """Completion messages and usage metadata flow through the backend client."""
     mock_client = MagicMock()
-    mock_choice = MagicMock()
-    mock_choice.message.content = "Hello from StoryVault!"
-    
-    mock_usage = MagicMock()
-    mock_usage.prompt_tokens = 15
-    mock_usage.completion_tokens = 5
-    mock_usage.total_tokens = 20
-
-    mock_resp = MagicMock()
-    mock_resp.choices = [mock_choice]
-    mock_resp.usage = mock_usage
-
-    mock_client.chat.completions.create.return_value = mock_resp
-
+    usage = {"promptTokens": 15, "completionTokens": 5, "totalTokens": 20}
+    mock_client.generate_completion.return_value = {
+        "text": "Hello from StoryVault!",
+        "usage": usage,
+    }
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "Hello!"},
     ]
 
-    content, usage = generate_chat_completion(messages, model="gpt-4o-mini", client=mock_client)
+    content, returned_usage = generate_chat_completion(messages, client=mock_client)
 
     assert content == "Hello from StoryVault!"
-    assert usage == mock_usage
-    mock_client.chat.completions.create.assert_called_once_with(
-        model="gpt-4o-mini",
-        messages=messages,
+    assert returned_usage == usage
+    mock_client.generate_completion.assert_called_once_with(messages)
+
+
+def test_backend_client_sanitizes_http_errors():
+    """Backend errors retain only their status code, not response bodies."""
+    client = get_backend_client("http://localhost:5000", "test-jwt")
+    response = MagicMock()
+    response.read.return_value = b'{"error":"private response"}'
+    error = HTTPError(
+        "http://localhost:5000/api/ai/completion",
+        401,
+        "Unauthorized",
+        {},
+        None,
     )
 
+    with patch("src.llm_client.urlopen", side_effect=error):
+        with pytest.raises(BackendRequestError) as raised:
+            client.generate_completion([{"role": "user", "content": "private journalist query"}])
 
-def test_generate_chat_completion_authentication_error(capsys):
-    """Verify graceful handling of 401 AuthenticationError."""
+    assert raised.value.status_code == 401
+    assert "private response" not in str(raised.value)
+
+
+def test_backend_client_timeout_covers_bounded_gemini_retries():
+    """The client allows time for the backend's bounded retries and per-attempt timeout."""
+    client = get_backend_client("http://localhost:5000", "test-jwt")
+    response = MagicMock()
+    response.__enter__.return_value = response
+    response.read.return_value = b'{"text":"Completed."}'
+
+    with patch("src.llm_client.urlopen", return_value=response) as urlopen_mock:
+        client.generate_completion([{"role": "user", "content": "test"}])
+
+    assert urlopen_mock.call_args.kwargs["timeout"] == BACKEND_REQUEST_TIMEOUT_SECONDS
+
+
+def test_generate_chat_completion_does_not_log_private_query(caplog):
+    """Backend failures do not expose prompt content or fabricate a response."""
     mock_client = MagicMock()
-    req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
-    mock_client.chat.completions.create.side_effect = AuthenticationError(
-        message="Incorrect API key provided",
-        response=httpx.Response(status_code=401, request=req),
-        body=None,
-    )
+    mock_client.generate_completion.side_effect = BackendRequestError(401)
 
-    messages = [{"role": "user", "content": "Hi"}]
-    content, usage = generate_chat_completion(messages, client=mock_client)
+    content, usage = generate_chat_completion(
+        [{"role": "user", "content": "private journalist query"}],
+        client=mock_client,
+    )
 
     assert content is None
     assert usage is None
-    captured = capsys.readouterr()
-    assert "Auth failed (401)" in captured.out
-
-
-def test_generate_chat_completion_rate_limit_error(capsys):
-    """Verify graceful handling of 429 RateLimitError."""
-    mock_client = MagicMock()
-    req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
-    mock_client.chat.completions.create.side_effect = RateLimitError(
-        message="You exceeded your current quota",
-        response=httpx.Response(status_code=429, request=req),
-        body=None,
-    )
-
-    messages = [{"role": "user", "content": "Hi"}]
-    content, usage = generate_chat_completion(messages, client=mock_client)
-
-    assert content is None
-    assert usage is None
-    captured = capsys.readouterr()
-    assert "Rate limited (429)" in captured.out
+    assert "HTTP 401" in caplog.text
+    assert "private journalist query" not in caplog.text

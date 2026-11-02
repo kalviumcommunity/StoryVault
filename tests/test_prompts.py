@@ -11,6 +11,7 @@ Validates:
 
 from unittest.mock import MagicMock
 import pytest
+from src.llm_client import BackendRequestError
 from src.prompts import (
     STAFF_ASSISTANT_SYSTEM_PROMPT,
     UNCONSTRAINED_SYSTEM_PROMPT,
@@ -134,32 +135,34 @@ def test_run_prompt_comparison_with_mock_client():
     """Verify run_prompt_comparison behavior when model responses succeed."""
     mock_client = MagicMock()
 
-    resp_a = MagicMock()
-    resp_a.choices = [MagicMock(message=MagicMock(content="We offer refunds within 14 days of purchase under standard terms."))]
-    resp_a.usage = MagicMock(total_tokens=30)
-
-    resp_b = MagicMock()
-    resp_b.choices = [MagicMock(message=MagicMock(content="The standard refund window is 14 days."))]
-    resp_b.usage = MagicMock(total_tokens=22)
-
-    resp_fb = MagicMock()
-    resp_fb.choices = [MagicMock(message=MagicMock(content="I don't know from the provided context."))]
-    resp_fb.usage = MagicMock(total_tokens=20)
-
-    mock_client.chat.completions.create.side_effect = [resp_a, resp_b, resp_fb]
+    responses = [
+        {
+            "text": "We offer refunds within 14 days of purchase under standard terms.",
+            "usage": {"promptTokens": 20, "completionTokens": 10, "totalTokens": 30},
+        },
+        {
+            "text": "The standard refund window is 14 days.",
+            "usage": {"promptTokens": 14, "completionTokens": 8, "totalTokens": 22},
+        },
+        {
+            "text": "I don't know from the provided context.",
+            "usage": {"promptTokens": 13, "completionTokens": 7, "totalTokens": 20},
+        },
+    ]
+    mock_client.generate_completion.side_effect = responses
 
     results = run_prompt_comparison(client=mock_client)
 
     assert results["live_executed"] is True
     assert "The standard refund window is 14 days." in results["prompt_b"]["response"]
     assert DEFAULT_FALLBACK_PHRASE in results["fallback_test"]["response"]
-    assert mock_client.chat.completions.create.call_count == 3
+    assert mock_client.generate_completion.call_count == 3
 
 
 def test_run_prompt_comparison_unverified_fallback():
     """Verify runner handles unconfigured API credentials without crashing."""
     mock_client = MagicMock()
-    mock_client.chat.completions.create.side_effect = Exception("No credentials available")
+    mock_client.generate_completion.side_effect = BackendRequestError(401)
 
     results = run_prompt_comparison(client=mock_client)
 
